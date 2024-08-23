@@ -13,13 +13,38 @@
             "state": {
               "type": "markdown",
               "state": {
+                "file": "services/Database.md",
+                "mode": "source",
+                "source": false
+              }
+            }
+          },
+          {
+            "id": "3dc9b94efa48f670",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "Supacloud.md",
+                "mode": "source",
+                "source": false
+              }
+            }
+          },
+          {
+            "id": "0f06564aaa5cbc87",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
                 "file": "Supacloud.md",
                 "mode": "source",
                 "source": false
               }
             }
           }
-        ]
+        ],
+        "currentTab": 1
       }
     ],
     "direction": "vertical"
@@ -146,14 +171,17 @@
       "command-palette:Open command palette": false
     }
   },
-  "active": "8f5b3642d26f3c83",
+  "active": "3dc9b94efa48f670",
   "lastOpenFiles": [
-    "services/Authentication.md",
-    "services/Database.md",
-    "services/Dedicated Machines.md",
-    "services/Lambda.md",
-    "services/Storage.md",
+    "Configuration Examples.md",
     "Supacloud.md",
+    "services/Storage.md",
+    "services/Lambda.md",
+    "services/Dedicated Machines.md",
+    "services/Database.md",
+    "services/Authentication.md",
+    "services/API Endpoints.md",
+    "Email.md",
     "services/SupaCloud.md"
   ]
 }

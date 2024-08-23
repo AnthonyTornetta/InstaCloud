@@ -5,8 +5,14 @@ Effectively amplify if it were good.
 ## Goals
 - Simple local environment setup (one command)
 - Automated cloud deployment
-- Configure your cloud by asking for what you need
+	- Via GitHub actions
+- Configure your cloud by stating what you need, where you need it
+	- [[Configuration Examples]]
 - Most secure settings by default
+- Logging by default
+	- Everything that should be logged, will be logged by default
+- Auto-scaling by default
+	- The user should not need to know how to properly orchestrate docker containers for their app to scale
 
 ## Ease of Use
 
@@ -23,3 +29,4 @@ Automatic deployments via GitHub actions (eventual support for alternative git h
 - [[Authentication]]
 - [[Lambda]]
 - [[Dedicated Machines]]
+- [[API Endpoints]]

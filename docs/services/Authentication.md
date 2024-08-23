@@ -1,0 +1,1 @@
+Allow for multiple authentication providers
