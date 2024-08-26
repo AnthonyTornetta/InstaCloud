@@ -1,0 +1,12 @@
+[get-posts]
+method = "get"           # (default)
+route = "v1/based/posts" # required
+file = "get-posts.ts"    # required
+read = ["database.main"]
+write = []               # (default)
+
+[post-posts]
+method = "post"
+route = "v1/based/posts"  # required
+file = "post-posts.ts"    # required
+write = ["database.main"] # this database will be checked for validity

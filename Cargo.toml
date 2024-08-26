@@ -1,5 +1,11 @@
 [package]
 edition = "2021"
-name = "supacloud" # the name of the package
-version = "0.1.0"    # the current version, obeying semver
+name = "supacloud"
+version = "0.1.0"
 authors = ["Anthony Tornetta <cornchipgonecodin@gmail.com>"]
+
+[dependencies]
+toml = "0.8.19"
+serde = { version = "1.0", features = ["derive"] }
+thiserror = "1.0.63"
+anyhow = "1.0.86"

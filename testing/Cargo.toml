@@ -1,0 +1,5 @@
+[package]
+edition = "2021"
+name = "supacloud" # the name of the package
+version = "0.1.0"    # the current version, obeying semver
+authors = ["Anthony Tornetta <cornchipgonecodin@gmail.com>"]

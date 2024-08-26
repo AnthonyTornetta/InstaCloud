@@ -1,0 +1,14 @@
+[[api]]
+name = "main"
+root = "api-endpoints" # These "root" folders should also support other repos
+domain = "$domain"
+prefix = "api"         # HTTPS route would be: https://$domain/api/
+
+[[static]]
+name = "main"
+root = "static"    # everything in this folder can be accessed via http requests
+domain = "$domain" # Optional prefix, such as the "api" prefix?
+
+[[database]]
+name = "main"
+engine = "postgres"
