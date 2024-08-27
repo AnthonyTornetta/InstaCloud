@@ -126,8 +126,6 @@ pub fn create_api_definitions(
     let mut result = vec![];
 
     for item in WalkDir::new(base_path).into_iter().filter_map(|x| x.ok()) {
-        println!("{item:?}");
-
         let item_path = item.path();
 
         if item_path.is_dir() {
