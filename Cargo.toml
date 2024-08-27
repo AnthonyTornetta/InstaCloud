@@ -9,3 +9,4 @@ toml = "0.8.19"
 serde = { version = "1.0", features = ["derive"] }
 thiserror = "1.0.63"
 anyhow = "1.0.86"
+walkdir = "2.5.0"

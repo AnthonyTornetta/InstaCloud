@@ -1,43 +1,10 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 
 use anyhow::bail;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-trait ContainsVariables {
-    fn insert_value(&mut self, var_name: &ConfigVariable, new_value: &str);
-}
-
-impl ContainsVariables for String {
-    fn insert_value(&mut self, var_name: &ConfigVariable, new_value: &str) {
-        *self = self.replace(&var_name.0, new_value);
-    }
-}
-
-impl<T: ContainsVariables + Sized> ContainsVariables for Option<T> {
-    fn insert_value(&mut self, var_name: &ConfigVariable, new_value: &str) {
-        if let Some(s) = self {
-            s.insert_value(var_name, new_value);
-        }
-    }
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
-pub struct ApiConfig {
-    name: String,
-    root: String,
-    domain: String,
-    prefix: Option<String>,
-}
-
-impl ContainsVariables for ApiConfig {
-    fn insert_value(&mut self, var_name: &ConfigVariable, new_value: &str) {
-        self.name.insert_value(var_name, new_value);
-        self.root.insert_value(var_name, new_value);
-        self.domain.insert_value(var_name, new_value);
-        self.prefix.insert_value(var_name, new_value);
-    }
-}
+use super::{api::api_config::ApiConfig, ConfigVariable, ConfigVariables, ContainsVariables};
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct StaticConfig {
@@ -90,16 +57,18 @@ pub struct CloudConfigRaw {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CloudConfig {
-    api: Vec<ApiConfig>,
-    database: Vec<DatabaseConfig>,
-    static_files: Vec<StaticConfig>,
+    pub api: Vec<ApiConfig>,
+    pub database: Vec<DatabaseConfig>,
+    pub static_files: Vec<StaticConfig>,
 }
 
 impl ContainsVariables for CloudConfigRaw {
     fn insert_value(&mut self, var_name: &ConfigVariable, new_value: &str) {
         if let Some(api) = &mut self.api {
-            api.iter_mut()
-                .for_each(|x| x.insert_value(var_name, new_value));
+            api.iter_mut().for_each(|x| {
+                // x.root = format!("{base_path}/{}", x.root);
+                x.insert_value(var_name, new_value);
+            });
         }
         if let Some(database) = &mut self.database {
             database
@@ -107,9 +76,10 @@ impl ContainsVariables for CloudConfigRaw {
                 .for_each(|x| x.insert_value(var_name, new_value));
         }
         if let Some(static_files) = &mut self.static_files {
-            static_files
-                .iter_mut()
-                .for_each(|x| x.insert_value(var_name, new_value));
+            static_files.iter_mut().for_each(|x| {
+                // x.root = format!("{base_path}/{}", x.root);
+                x.insert_value(var_name, new_value)
+            });
         }
     }
 }
@@ -145,29 +115,35 @@ impl ParseConfig for DatabaseConfigRaw {
     }
 }
 
-fn check_all_unique<'a, T: Clone + Iterator<Item = &'a str>>(names: T) -> bool {
-    let len = names.clone().into_iter().count();
+pub trait NameUniquenessChecker {
+    /// Asserts all strings are unique (ignoring capitalization)
+    fn check_all_unique_names(self) -> bool;
+}
 
-    names
-        .map(|x| x.to_lowercase())
-        .collect::<HashSet<String>>()
-        .len()
-        == len
+impl<'a, T: Iterator<Item = &'a str> + Clone> NameUniquenessChecker for T {
+    fn check_all_unique_names(self) -> bool {
+        let len = self.clone().into_iter().count();
+
+        let set = self.map(|x| x.to_lowercase()).collect::<HashSet<String>>();
+
+        set.len() == len
+    }
 }
 
 impl CloudConfig {
     pub fn new(
-        variables: HashMap<ConfigVariable, String>,
+        variables: &ConfigVariables,
         mut raw_config: CloudConfigRaw,
+        base_path: &str,
     ) -> anyhow::Result<Self> {
-        for (variable, value) in variables {
-            raw_config.insert_value(&variable, &value);
+        for (variable, value) in variables.iter() {
+            raw_config.insert_value(variable, value);
         }
 
         let mut last_error = None;
 
-        let api = raw_config.api.unwrap_or(vec![]);
-        let static_files = raw_config.static_files.unwrap_or(vec![]);
+        let mut api = raw_config.api.unwrap_or(vec![]);
+        let mut static_files = raw_config.static_files.unwrap_or(vec![]);
 
         let databases = raw_config
             .database
@@ -189,14 +165,29 @@ impl CloudConfig {
             bail!(error);
         }
 
-        if !check_all_unique(api.iter().map(|x| x.name.as_str())) {
+        if !api.iter().map(|x| x.name.as_str()).check_all_unique_names() {
             bail!("Not all names for {api:?} are unique!");
         }
-        if !check_all_unique(databases.iter().map(|x| x.name.as_str())) {
+        if !databases
+            .iter()
+            .map(|x| x.name.as_str())
+            .check_all_unique_names()
+        {
             bail!("Not all names for {databases:?} are unique!");
         }
-        if !check_all_unique(static_files.iter().map(|x| x.name.as_str())) {
+        if !static_files
+            .iter()
+            .map(|x| x.name.as_str())
+            .check_all_unique_names()
+        {
             bail!("Not all names for {static_files:?} are unique!");
+        }
+
+        for api in api.iter_mut() {
+            api.root = format!("{base_path}/{}", api.root);
+        }
+        for static_file in static_files.iter_mut() {
+            static_file.root = format!("{base_path}/{}", static_file.root);
         }
 
         Ok(Self {
@@ -204,24 +195,5 @@ impl CloudConfig {
             database: databases,
             static_files,
         })
-    }
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
-pub struct ConfigVariable(String);
-
-#[derive(Error, Debug)]
-pub enum ConfigVariableError {
-    #[error("Invalid variable name - {0}")]
-    InvalidName(String),
-}
-
-impl ConfigVariable {
-    pub fn new(var_name: &str) -> Result<Self, ConfigVariableError> {
-        if var_name.split_whitespace().count() != 1 {
-            return Err(ConfigVariableError::InvalidName(var_name.to_owned()));
-        }
-
-        Ok(Self(format!("${var_name}")))
     }
 }
