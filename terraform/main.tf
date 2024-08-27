@@ -48,7 +48,7 @@ resource "aws_instance" "my_ec2_instance" {
   instance_type = "t2.micro"
 
   # key_name = aws_key_pair.my_key_pair.key_name
-  security_groups = aws_security_group.allow_ssh_http.name
+  security_groups = [ aws_security_group.allow_ssh_http.name ]
 
   tags = {
     Name = "MyEC2Instance"
