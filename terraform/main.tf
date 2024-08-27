@@ -10,7 +10,7 @@ provider "aws" {
   region = "us-east-1"
 }
 
-resource "aws-key-pair" "my-key-pair" {
+resource "aws_key_pair" "my_key_pair" {
   key_name = "my_key_pair"
   public_key = file("~/.ssh/id_ras.pub")
 }
