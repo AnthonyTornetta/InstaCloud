@@ -1,4 +1,10 @@
-use std::{collections::HashMap, fs};
+use std::{
+    collections::HashMap,
+    fs::{self, File},
+    io::{Cursor, Write},
+};
+
+use zip::{write::SimpleFileOptions, ZipWriter};
 
 use crate::config::api::api_config::{ApiDefinition, HttpMethod};
 
@@ -35,7 +41,7 @@ pub(super) fn setup_api_dir() {
     .expect("Unable to copy file!");
 }
 
-pub(super) fn process_api_definition(api_def: &ApiDefinition) {
+pub(super) fn process_api_definition(api_def: &ApiDefinition, depends_on: &str) {
     let tf_vars = TfVars {
         environment_vars: Default::default(),
         name: api_def.name.clone(),
@@ -58,11 +64,33 @@ pub(super) fn process_api_definition(api_def: &ApiDefinition) {
         .replace("{function_name}", &tf_vars.name)
         .replace("{runtime}", &tf_vars.runtime)
         .replace("{http_method}", &tf_vars.method)
-        .replace("{resource_path}", &tf_vars.resource_path);
+        .replace("{resource_path}", &tf_vars.resource_path)
+        .replace("{depends_on}", depends_on);
 
     fs::write(
         &format!("terraform/generated/api/{}.tf", tf_vars.name),
         tf_file,
     )
     .expect("Failed to write");
+
+    create_lambda_files(&format!("{}/{}", api_def.root, api_def.file), &tf_vars)
+        .expect("Unable to create api files!");
+}
+
+fn create_lambda_files(file_path: &str, tf_vars: &TfVars) -> anyhow::Result<()> {
+    let file_buf = File::create(&format!(
+        "terraform/generated/api/lambda_function_{}.zip",
+        tf_vars.name
+    ))?;
+
+    let mut zw = ZipWriter::new(file_buf);
+    zw.start_file("index.js", SimpleFileOptions::default())?;
+
+    let fs_conents = fs::read(file_path)?;
+
+    zw.write_all(&fs_conents)?;
+
+    zw.finish()?;
+
+    Ok(())
 }

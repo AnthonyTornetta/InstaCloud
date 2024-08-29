@@ -35,8 +35,14 @@ fn main() -> anyhow::Result<()> {
     for api_config in &cloud_config.api {
         let config_defs = load_definitions(api_config, &vars)?;
 
+        let depends_on = config_defs
+            .iter()
+            .map(|x| format!("aws_api_gateway_integration.lambda_integration_{}", x.name))
+            .collect::<Vec<String>>()
+            .join(",\n\t\t");
+
         for def in config_defs {
-            process_api_definition(&def);
+            process_api_definition(&def, &depends_on);
         }
     }
 
