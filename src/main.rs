@@ -1,11 +1,13 @@
 use std::fs;
 
+use api::{process_api_definition, setup_api_dir};
 use config::{
     api::load_definitions,
     cloud_config::{CloudConfig, CloudConfigRaw},
     ConfigVariable, ConfigVariables,
 };
 
+mod api;
 mod config;
 
 fn main() -> anyhow::Result<()> {
@@ -25,13 +27,18 @@ fn main() -> anyhow::Result<()> {
 
     let cloud_config = CloudConfig::new(&vars, cloud_config, base_path)?;
 
+    let _ = fs::remove_dir_all("terraform/generated");
+    fs::create_dir("terraform/generated").expect("Unable to create generated dir!");
+
+    setup_api_dir();
+
     for api_config in &cloud_config.api {
-        let config_def = load_definitions(api_config, &vars)?;
+        let config_defs = load_definitions(api_config, &vars)?;
 
-        println!("{config_def:?}");
+        for def in config_defs {
+            process_api_definition(&def);
+        }
     }
-
-    println!("{cloud_config:?}");
 
     Ok(())
 }

@@ -55,13 +55,13 @@ pub struct ApiToml {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ApiDefinition {
-    name: String,
-    method: HttpMethod,
-    route: String,
-    file: String,
-    root: String,
-    read: Vec<String>,
-    write: Vec<String>,
+    pub name: String,
+    pub method: HttpMethod,
+    pub route: String,
+    pub file: String,
+    pub root: String,
+    pub read: Vec<String>,
+    pub write: Vec<String>,
 }
 
 #[derive(Error, Debug)]
