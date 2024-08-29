@@ -14,7 +14,7 @@ struct TfVars {
     /// Gateway name
     pub gateway_name: String,
     /// For the environment (e.g. "prod")
-    pub gateway_stage: String,
+    pub resource_path: String,
     /// "GET"/"POST"/etc
     pub method: String,
 }
@@ -25,6 +25,12 @@ pub(super) fn setup_api_dir() {
         "terraform/generated/api/variables.tf",
     )
     .expect("Failed to setup API dir");
+
+    fs::copy(
+        "terraform/lambda_test/main.tf",
+        "terraform/generated/api/main.tf",
+    )
+    .expect("Unable to copy file!");
 }
 
 pub(super) fn process_api_definition(api_def: &ApiDefinition) {
@@ -40,14 +46,21 @@ pub(super) fn process_api_definition(api_def: &ApiDefinition) {
         region: "us-east-1".into(),
         runtime: "nodejs20.x".into(),
         gateway_name: "lambda_gateway".into(),
-        gateway_stage: "prod".into(),
+        resource_path: api_def.route.to_owned(),
     };
 
-    fs::copy(
-        "terraform/lambda_test/main.tf",
-        &format!("terraform/generated/api/{}.tf", api_def.name),
-    )
-    .expect("Unable to copy file!");
+    let mut tf_file =
+        fs::read_to_string("terraform/lambda_test/api.tf").expect("Failed to read TF file.");
 
-    println!("{api_def:?}");
+    tf_file = tf_file
+        .replace("{{function_name}}", &tf_vars.name)
+        .replace("{{runtime}}", &tf_vars.runtime)
+        .replace("{{http_method}}", &tf_vars.method)
+        .replace("{{resource_path}}", &tf_vars.resource_path);
+
+    fs::write(
+        &format!("terraform/generated/api/{}.tf", tf_vars.name),
+        tf_file,
+    )
+    .expect("Failed to write");
 }
