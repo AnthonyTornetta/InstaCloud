@@ -1,5 +1,5 @@
 use std::{
-    collections::HashMap,
+    collections::{HashMap, HashSet},
     fs::{self, File},
     io::{Cursor, Write},
 };
@@ -25,7 +25,7 @@ struct TfVars {
     pub method: String,
 }
 
-pub(super) fn setup_api_dir() {
+pub(super) fn setup_api_dir_root() {
     fs::create_dir_all("terraform/generated/api/").expect("Unable to create API dir.");
 
     fs::copy(
@@ -41,6 +41,26 @@ pub(super) fn setup_api_dir() {
     .expect("Unable to copy file!");
 }
 
+pub(super) fn setup_api_dir(api_defs: &[ApiDefinition]) {
+    let routes = api_defs
+        .iter()
+        .map(|x| x.route.as_str())
+        .collect::<HashSet<&str>>();
+
+    for route in routes {
+        let mut resource_path = fs::read_to_string("terraform/lambda_test/resource_path.tf")
+            .expect("Cannot load resource_path.tf");
+
+        resource_path = resource_path.replace("{resource_path}", route);
+
+        fs::write(
+            &format!("terraform/generated/api/resource_path_{route}.tf"),
+            resource_path,
+        )
+        .expect("Failed to write resource_path.tf");
+    }
+}
+
 pub(super) fn process_api_definition(api_def: &ApiDefinition, depends_on: &str) {
     let tf_vars = TfVars {
         environment_vars: Default::default(),
@@ -48,7 +68,12 @@ pub(super) fn process_api_definition(api_def: &ApiDefinition, depends_on: &str) 
         method: match api_def.method {
             HttpMethod::Get => "GET",
             HttpMethod::Post => "POST",
-            _ => todo!(),
+            HttpMethod::Any => "ANY",
+            HttpMethod::Put => "PUT",
+            HttpMethod::Head => "HEAD",
+            HttpMethod::Patch => "PATCH",
+            HttpMethod::Delete => "DELETE",
+            HttpMethod::Options => "OPTIONS",
         }
         .to_owned(),
         region: "us-east-1".into(),
@@ -64,8 +89,8 @@ pub(super) fn process_api_definition(api_def: &ApiDefinition, depends_on: &str) 
         .replace("{function_name}", &tf_vars.name)
         .replace("{runtime}", &tf_vars.runtime)
         .replace("{http_method}", &tf_vars.method)
-        .replace("{resource_path}", &tf_vars.resource_path)
-        .replace("{depends_on}", depends_on);
+        .replace("{depends_on}", depends_on)
+        .replace("{resource_path}", &tf_vars.resource_path);
 
     fs::write(
         &format!("terraform/generated/api/{}.tf", tf_vars.name),

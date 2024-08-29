@@ -15,7 +15,7 @@ resource "aws_lambda_function" "node_lambda_{function_name}" {
 
 resource "aws_api_gateway_method" "api_method_{function_name}" {
   rest_api_id   = aws_api_gateway_rest_api.api_gateway.id
-  resource_id   = aws_api_gateway_resource.api_resource.id
+  resource_id   = aws_api_gateway_resource.api_resource_{resource_path}.id
   http_method   = "{http_method}" # var.http_method
   authorization = "NONE"
 }
@@ -23,7 +23,7 @@ resource "aws_api_gateway_method" "api_method_{function_name}" {
 # TODO: I don't think the "depends_on" in this is needed.
 resource "aws_api_gateway_integration" "lambda_integration_{function_name}" {
   rest_api_id = aws_api_gateway_rest_api.api_gateway.id
-  resource_id = aws_api_gateway_resource.api_resource.id
+  resource_id = aws_api_gateway_resource.api_resource_{resource_path}.id
   http_method = aws_api_gateway_method.api_method_{function_name}.http_method
 
   depends_on = [aws_lambda_function.node_lambda_{function_name}]

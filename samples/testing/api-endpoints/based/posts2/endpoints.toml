@@ -1,15 +1,15 @@
 [[api]]
-name = "get_posts"       # required
+name = "get2_posts"       # required
 method = "get"           # required
-route = "posts"          # required
+route = "posts2"          # required
 file = "get-posts.js"    # required
 read = ["database.main"]
 write = []               # (default)
 
 [[api]]
-name = "post_posts"
+name = "post2_posts"
 method = "post"
-route = "posts"
+route = "posts2"
 file = "post-posts.js"
 write = ["database.main"] # this database will be checked for validity
 
