@@ -20,6 +20,8 @@ struct TfVars {
 }
 
 pub(super) fn setup_api_dir() {
+    fs::create_dir_all("terraform/generated/api/").expect("Unable to create API dir.");
+
     fs::copy(
         "terraform/lambda_test/variables.tf",
         "terraform/generated/api/variables.tf",
@@ -53,10 +55,10 @@ pub(super) fn process_api_definition(api_def: &ApiDefinition) {
         fs::read_to_string("terraform/lambda_test/api.tf").expect("Failed to read TF file.");
 
     tf_file = tf_file
-        .replace("{{function_name}}", &tf_vars.name)
-        .replace("{{runtime}}", &tf_vars.runtime)
-        .replace("{{http_method}}", &tf_vars.method)
-        .replace("{{resource_path}}", &tf_vars.resource_path);
+        .replace("{function_name}", &tf_vars.name)
+        .replace("{runtime}", &tf_vars.runtime)
+        .replace("{http_method}", &tf_vars.method)
+        .replace("{resource_path}", &tf_vars.resource_path);
 
     fs::write(
         &format!("terraform/generated/api/{}.tf", tf_vars.name),
