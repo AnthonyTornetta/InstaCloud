@@ -47,6 +47,8 @@ resource "aws_api_gateway_deployment" "api_deployment_{function_name}" {
   ] # [aws_api_gateway_integration.lambda_integration_{function_name}]
 
   rest_api_id = aws_api_gateway_rest_api.api_gateway.id
+  # https://stackoverflow.com/questions/48955987/missing-authentication-token-on-unauthenticated-method
+  # This being a fixed thing is preventing re-applies from working properly
   stage_name  = var.api_gateway_stage_name # should use aws_api_gateway_stage resource instead.
 }
 

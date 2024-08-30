@@ -76,6 +76,7 @@ impl ApiDefinition {
     pub fn create_definition(
         raw: ApiDefinitionRaw,
         root: String,
+        mut prefix: &str,
     ) -> Result<Self, ApiDefinitionError> {
         let method = match raw.method.to_lowercase().as_str() {
             "any" => HttpMethod::Any,
@@ -89,11 +90,15 @@ impl ApiDefinition {
             _ => return Err(ApiDefinitionError::InvalidMethod(raw.method)),
         };
 
+        while prefix.ends_with('/') {
+            prefix = &prefix[0..prefix.len() - 1];
+        }
+
         Ok(Self {
             file: raw.file,
             method,
             name: raw.name,
-            route: raw.route,
+            route: format!("{prefix}/{}", raw.route),
             root,
             read: raw.read.unwrap_or_default(),
             write: raw.write.unwrap_or_default(),
@@ -120,11 +125,12 @@ impl ContainsVariables for ApiDefinitionRaw {
 }
 
 pub fn create_api_definitions(
-    base_path: &str,
+    api_config: &ApiConfig,
     variables: &ConfigVariables,
 ) -> anyhow::Result<Vec<ApiDefinition>> {
     let mut result = vec![];
 
+    let base_path = &api_config.root;
     for item in WalkDir::new(base_path).into_iter().filter_map(|x| x.ok()) {
         let item_path = item.path();
 
@@ -142,6 +148,7 @@ pub fn create_api_definitions(
             &item_path_str[0..item_path_str.len() - "endpoints.toml".len()],
             item_path_str,
             variables,
+            api_config.prefix.as_ref().map(|x| x.as_str()).unwrap_or(""),
         )?);
     }
 
@@ -152,6 +159,7 @@ fn read_api_config(
     root_dir: &str,
     config_path: &str,
     variables: &ConfigVariables,
+    prefix: &str,
 ) -> anyhow::Result<Vec<ApiDefinition>> {
     let file = fs::read_to_string(config_path).unwrap();
 
@@ -169,7 +177,7 @@ fn read_api_config(
         .api
         .into_iter()
         .map_while(|x| {
-            let result = ApiDefinition::create_definition(x, root_dir.to_owned());
+            let result = ApiDefinition::create_definition(x, root_dir.to_owned(), prefix);
             match result {
                 Ok(res) => Some(res),
                 Err(err) => {

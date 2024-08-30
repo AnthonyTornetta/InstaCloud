@@ -8,5 +8,5 @@ pub fn load_definitions(
     api_config: &ApiConfig,
     variables: &ConfigVariables,
 ) -> anyhow::Result<Vec<ApiDefinition>> {
-    create_api_definitions(&api_config.root, &variables)
+    create_api_definitions(api_config, &variables)
 }
