@@ -44,7 +44,7 @@ fn main() -> anyhow::Result<()> {
             fs::remove_file(entry.path()).expect("Unable to remove old tf file.");
         }
     }
-    // let _ = fs::remove_dir_all("terraform/generated");
+
     fs::create_dir_all("terraform/generated").expect("Unable to create generated dir!");
 
     setup_api_dir_root();

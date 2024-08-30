@@ -1,0 +1,8 @@
+[[api]]
+name = "get_other"       # required
+method = "get"           # required
+route = "test/other"          # required
+file = "get-other.js"    # required
+read = ["database.main"]
+write = []               # (default)
+

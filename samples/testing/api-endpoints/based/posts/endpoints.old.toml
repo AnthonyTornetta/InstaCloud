@@ -1,0 +1,15 @@
+# [[api]]
+# name = "get_posts"       # required
+# method = "get"           # required
+# route = "posts"          # required
+# file = "get-posts.js"    # required
+# read = ["database.main"]
+# write = []               # (default)
+#
+# [[api]]
+# name = "post_posts"
+# method = "post"
+# route = "posts"
+# file = "post-posts.js"
+# write = ["database.main"] # this database will be checked for validity
+#
