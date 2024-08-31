@@ -82,8 +82,6 @@ fn recurse(route_tree: &PathNode, route_so_far: &str) {
         route_here.hash(&mut hasher);
         let hash_here = hasher.finish();
 
-        println!("{route_here}");
-
         let parent_id = if route_so_far.is_empty() {
             "aws_api_gateway_rest_api.api_gateway.root_resource_id".to_owned()
         } else {
@@ -154,8 +152,6 @@ pub(super) fn process_api_definition(
     let mut hasher = DefaultHasher::default();
     tf_vars.resource_path.hash(&mut hasher);
     let resource_hash = hasher.finish();
-
-    println!("HASHING: {}", tf_vars.resource_path);
 
     let api_prefix = api_config.tf_prefix();
 
