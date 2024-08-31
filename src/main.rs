@@ -49,19 +49,40 @@ fn main() -> anyhow::Result<()> {
 
     setup_api_dir_root();
 
-    for api_config in &cloud_config.api {
-        let config_defs = load_definitions(api_config, &vars)?;
+    // This entire thing is pure evil and should be re-written asap
+    let mut defs = vec![];
 
+    let depends_on = cloud_config
+        .api
+        .iter()
+        .flat_map(|api_config| {
+            let api_identifier = api_config.tf_prefix();
+
+            let config_defs = load_definitions(api_config, &vars)
+                .unwrap_or_else(|_| panic!("Failed to laod API definitions for: {api_config:?}"));
+
+            let res = config_defs
+                .iter()
+                .map(|x| {
+                    format!(
+                        "aws_api_gateway_integration.lambda_integration_{}_{}",
+                        api_identifier, x.name
+                    )
+                })
+                .collect::<Vec<String>>();
+
+            defs.push((config_defs, api_config));
+
+            res
+        })
+        .collect::<Vec<String>>()
+        .join(",\n\t\t");
+
+    for (config_defs, api_config) in defs {
         setup_api_dir(&config_defs);
 
-        let depends_on = config_defs
-            .iter()
-            .map(|x| format!("aws_api_gateway_integration.lambda_integration_{}", x.name))
-            .collect::<Vec<String>>()
-            .join(",\n\t\t");
-
         for def in config_defs {
-            process_api_definition(&def, &depends_on);
+            process_api_definition(&def, api_config, &depends_on);
         }
     }
 

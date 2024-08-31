@@ -4,6 +4,12 @@ root = "api-endpoints" # These "root" folders should also support other repos
 domain = "$domain"
 prefix = "api"         # HTTPS route would be: https://$domain/api/
 
+[[api]]
+name = "secondary"
+root = "api-endpoints"
+domain = "$domain"
+prefix = "secondary"
+
 [[static]]
 name = "main"
 root = "static"    # everything in this folder can be accessed via http requests

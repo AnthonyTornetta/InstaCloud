@@ -2,12 +2,12 @@ use std::{
     collections::{HashMap, HashSet},
     fs::{self, File},
     hash::{DefaultHasher, Hash, Hasher},
-    io::{Cursor, Write},
+    io::Write,
 };
 
 use zip::{write::SimpleFileOptions, ZipWriter};
 
-use crate::config::api::api_config::{ApiDefinition, HttpMethod};
+use crate::config::api::api_config::{ApiConfig, ApiDefinition, HttpMethod};
 
 struct TfVars {
     /// AWS region
@@ -123,7 +123,11 @@ pub(super) fn setup_api_dir(api_defs: &[ApiDefinition]) {
     recurse(&route_tree, "");
 }
 
-pub(super) fn process_api_definition(api_def: &ApiDefinition, depends_on: &str) {
+pub(super) fn process_api_definition(
+    api_def: &ApiDefinition,
+    api_config: &ApiConfig,
+    depends_on: &str,
+) {
     let tf_vars = TfVars {
         environment_vars: Default::default(),
         name: api_def.name.clone(),
@@ -153,7 +157,10 @@ pub(super) fn process_api_definition(api_def: &ApiDefinition, depends_on: &str) 
 
     println!("HASHING: {}", tf_vars.resource_path);
 
+    let api_prefix = api_config.tf_prefix();
+
     tf_file = tf_file
+        .replace("{api_identifier}", &api_prefix)
         .replace("{function_name}", &tf_vars.name)
         .replace("{runtime}", &tf_vars.runtime)
         .replace("{http_method}", &tf_vars.method)
@@ -162,19 +169,23 @@ pub(super) fn process_api_definition(api_def: &ApiDefinition, depends_on: &str) 
         .replace("{resource_path_hash}", &format!("{resource_hash}"));
 
     fs::write(
-        &format!("terraform/generated/api/{}.tf", tf_vars.name),
+        &format!("terraform/generated/api/{}_{}.tf", api_prefix, tf_vars.name),
         tf_file,
     )
     .expect("Failed to write");
 
-    create_lambda_files(&format!("{}/{}", api_def.root, api_def.file), &tf_vars)
-        .expect("Unable to create api files!");
+    create_lambda_files(
+        &format!("{}/{}", api_def.root, api_def.file),
+        &tf_vars,
+        &api_prefix,
+    )
+    .expect("Unable to create api files!");
 }
 
-fn create_lambda_files(file_path: &str, tf_vars: &TfVars) -> anyhow::Result<()> {
+fn create_lambda_files(file_path: &str, tf_vars: &TfVars, api_prefix: &str) -> anyhow::Result<()> {
     let file_buf = File::create(&format!(
-        "terraform/generated/api/lambda_function_{}.zip",
-        tf_vars.name
+        "terraform/generated/api/lambda_function_{}_{}.zip",
+        api_prefix, tf_vars.name
     ))?;
 
     let mut zw = ZipWriter::new(file_buf);

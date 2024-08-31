@@ -3,7 +3,9 @@ exports.handler = async (params) => {
   return {
     statusCode: 200,
     body: JSON.stringify({
-      "hello from": "the other endpoint =)"
-    })
+      sum:
+        Number(params.queryStringParameters.a) +
+        Number(params.queryStringParameters.b),
+    }),
   };
 };

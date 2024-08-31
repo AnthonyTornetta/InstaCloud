@@ -1,4 +1,7 @@
-use std::fs;
+use std::{
+    fs,
+    hash::{DefaultHasher, Hash, Hasher},
+};
 
 use anyhow::bail;
 use serde::{Deserialize, Serialize};
@@ -15,6 +18,15 @@ pub struct ApiConfig {
     pub root: String,
     pub domain: String,
     pub prefix: Option<String>,
+}
+
+impl ApiConfig {
+    /// Returns the String to append to terraform files and resources to make them unique to this API config
+    pub fn tf_prefix(&self) -> String {
+        let mut hasher = DefaultHasher::default();
+        self.name.hash(&mut hasher);
+        format!("{}", hasher.finish())
+    }
 }
 
 impl ContainsVariables for ApiConfig {
