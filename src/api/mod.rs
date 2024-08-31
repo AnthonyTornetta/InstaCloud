@@ -18,8 +18,6 @@ struct TfVars {
     pub runtime: String,
     /// Environment variables sent to the lambda script
     pub environment_vars: HashMap<String, String>,
-    /// Gateway name
-    pub gateway_name: String,
     /// For the environment (e.g. "prod")
     pub resource_path: String,
     /// "GET"/"POST"/etc
@@ -126,7 +124,7 @@ pub(super) fn process_api_definition(
     api_config: &ApiConfig,
     depends_on: &str,
 ) {
-    let tf_vars = TfVars {
+    let mut tf_vars = TfVars {
         environment_vars: Default::default(),
         name: api_def.name.clone(),
         method: match api_def.method {
@@ -142,7 +140,6 @@ pub(super) fn process_api_definition(
         .to_owned(),
         region: "us-east-1".into(),
         runtime: "nodejs20.x".into(),
-        gateway_name: "lambda_gateway".into(),
         resource_path: api_def.route.to_owned(),
     };
 
@@ -155,6 +152,10 @@ pub(super) fn process_api_definition(
 
     let api_prefix = api_config.tf_prefix();
 
+    fn format_var(v: &str) -> String {
+        v.replace("\"", "\\\"")
+    }
+
     tf_file = tf_file
         .replace("{api_identifier}", &api_prefix)
         .replace("{function_name}", &tf_vars.name)
@@ -162,7 +163,21 @@ pub(super) fn process_api_definition(
         .replace("{http_method}", &tf_vars.method)
         .replace("{depends_on}", depends_on)
         .replace("{resource_path}", &tf_vars.resource_path)
-        .replace("{resource_path_hash}", &format!("{resource_hash}"));
+        .replace("{resource_path_hash}", &format!("{resource_hash}"))
+        .replace(
+            "{environment_variables}",
+            &format!(
+                "{{
+            {}
+        }}",
+                tf_vars
+                    .environment_vars
+                    .iter()
+                    .map(|(k, v)| { format!("\"{}\" = \"{}\"", format_var(k), format_var(v)) })
+                    .collect::<Vec<String>>()
+                    .join(",\n\t\t")
+            ),
+        );
 
     fs::write(
         &format!("terraform/generated/api/{}_{}.tf", api_prefix, tf_vars.name),

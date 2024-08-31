@@ -9,7 +9,7 @@ resource "aws_lambda_function" "node_lambda_{api_identifier}_{function_name}" {
   source_code_hash = filebase64sha256("lambda_function_{api_identifier}_{function_name}.zip")
 
   environment {
-    variables = var.lambda_environment_variables # {environment_variables} # 
+    variables = {environment_variables}
   }
 }
 
