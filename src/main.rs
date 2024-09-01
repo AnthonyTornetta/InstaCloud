@@ -10,6 +10,7 @@ use walkdir::WalkDir;
 
 mod api;
 mod config;
+mod database;
 
 fn main() -> anyhow::Result<()> {
     let base_path = "samples/testing";
