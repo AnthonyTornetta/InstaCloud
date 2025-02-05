@@ -56,3 +56,6 @@ output "api_url_{api_identifier}_{function_name}" {
   value = "${aws_api_gateway_deployment.api_deployment_{api_identifier}_{function_name}.invoke_url}/{resource_path}"
 }
 
+output "custom_api_url_{api_identifier}_{function_name}" {
+  value = "https://${aws_api_gateway_domain_name.custom_domain.domain_name}/{resource_path}"
+}

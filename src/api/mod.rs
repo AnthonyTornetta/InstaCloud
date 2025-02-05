@@ -24,7 +24,7 @@ struct TfVars {
     pub method: String,
 }
 
-pub(super) fn setup_api_dir_root() {
+pub(super) fn setup_api_dir_root(domain: &str) {
     fs::create_dir_all("terraform/generated/api/").expect("Unable to create API dir.");
 
     fs::copy(
@@ -33,9 +33,11 @@ pub(super) fn setup_api_dir_root() {
     )
     .expect("Failed to setup API dir");
 
-    fs::copy(
-        "terraform/lambda_test/main.tf",
+    fs::write(
         "terraform/generated/api/main.tf",
+        &fs::read_to_string("terraform/lambda_test/main.tf")
+            .expect("Missing api main.tf")
+            .replace("{domain_name}", domain),
     )
     .expect("Unable to copy file!");
 }
@@ -92,6 +94,7 @@ fn recurse(route_tree: &PathNode, route_so_far: &str) {
         resource_path = resource_path
             .replace("{resource_path_hash}", &format!("{hash_here}"))
             .replace("{resource_path}", &subroute)
+            .replace("{domain_name}", "api.cornchipss.com")
             .replace("{parent_id}", &parent_id);
 
         fs::write(
@@ -164,6 +167,7 @@ pub(super) fn process_api_definition(
         .replace("{depends_on}", depends_on)
         .replace("{resource_path}", &tf_vars.resource_path)
         .replace("{resource_path_hash}", &format!("{resource_hash}"))
+        .replace("{domain_name}", "api.cornchipss.com")
         .replace(
             "{environment_variables}",
             &format!(

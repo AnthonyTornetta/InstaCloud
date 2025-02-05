@@ -48,7 +48,7 @@ fn main() -> anyhow::Result<()> {
 
     fs::create_dir_all("terraform/generated").expect("Unable to create generated dir!");
 
-    setup_api_dir_root();
+    setup_api_dir_root("api.cornchipss.com");
 
     // This entire thing is pure evil and should be re-written asap
     let mut defs = vec![];
