@@ -52,7 +52,7 @@ resource "aws_db_instance" "postgres" {
   db_subnet_group_name   = aws_db_subnet_group.main.name
   vpc_security_group_ids = [aws_security_group.db_sg.id]
   publicly_accessible    = false # SET THIS TO FALSE!!
-  multi_az               = true
+  multi_az               = false # Should be true for prod
 }
 
 output "db_endpoint" {
