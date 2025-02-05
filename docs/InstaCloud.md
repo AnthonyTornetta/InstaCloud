@@ -1,4 +1,4 @@
-Supacloud will be a cloud service provider providing not just cloud services, but an incredibly low barrier to entry.  Using Supacloud should be simpler and more reliable than doing a non-cloud project.
+InstaCloud will be a cloud service provider providing not just cloud services, but an incredibly low barrier to entry.  Using InstaCloud should be simpler and more reliable than doing a non-cloud project.
 
 Effectively amplify if it were good.
 
