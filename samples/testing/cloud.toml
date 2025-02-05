@@ -1,13 +1,13 @@
 [[api]]
 name = "main"
 root = "api-endpoints" # These "root" folders should also support other repos
-domain = "cornchipss.com"
+domain = "api.cornchipss.com"
 prefix = "api"         # HTTPS route would be: https://$domain/api/
 
 [[api]]
 name = "secondary"
 root = "api-endpoints"
-domain = "cornchipss.com"
+domain = "api.cornchipss.com"
 prefix = "secondary"
 
 [[static]]

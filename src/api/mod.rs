@@ -24,22 +24,28 @@ struct TfVars {
     pub method: String,
 }
 
-pub(super) fn setup_api_dir_root(domain: &str) {
-    fs::create_dir_all("terraform/generated/api/").expect("Unable to create API dir.");
+pub(super) fn setup_api_dir_root(domain: &str) -> String {
+    let mut domain_hash = DefaultHasher::default();
+    domain.hash(&mut domain_hash);
+    let hash = domain_hash.finish();
+    let path = format!("terraform/generated/api/{hash}");
+    fs::create_dir_all(&path).expect("Unable to create API dir.");
 
     fs::copy(
         "terraform/lambda_test/variables.tf",
-        "terraform/generated/api/variables.tf",
+        format!("{path}/variables.tf"),
     )
     .expect("Failed to setup API dir");
 
     fs::write(
-        "terraform/generated/api/main.tf",
+        format!("{path}/main.tf"),
         &fs::read_to_string("terraform/lambda_test/main.tf")
             .expect("Missing api main.tf")
             .replace("{domain_name}", domain),
     )
     .expect("Unable to copy file!");
+
+    path
 }
 
 #[derive(Debug, Default)]
@@ -67,7 +73,7 @@ impl PathNode {
     }
 }
 
-fn recurse(route_tree: &PathNode, route_so_far: &str) {
+fn recurse(route_tree: &PathNode, route_so_far: &str, root_dir: &str) {
     for (subroute, children) in &route_tree.children {
         let route_here = if route_so_far.is_empty() {
             subroute.to_owned()
@@ -94,20 +100,19 @@ fn recurse(route_tree: &PathNode, route_so_far: &str) {
         resource_path = resource_path
             .replace("{resource_path_hash}", &format!("{hash_here}"))
             .replace("{resource_path}", &subroute)
-            .replace("{domain_name}", "api.cornchipss.com")
             .replace("{parent_id}", &parent_id);
 
         fs::write(
-            &format!("terraform/generated/api/resource_path_{hash_here}.tf"),
+            &format!("{root_dir}/resource_path_{hash_here}.tf"),
             resource_path,
         )
         .expect("Failed to write resource_path.tf");
 
-        recurse(children, &route_here);
+        recurse(children, &route_here, root_dir);
     }
 }
 
-pub(super) fn setup_api_dir(api_defs: &[ApiDefinition]) {
+pub(super) fn setup_api_dir(api_defs: &[ApiDefinition], root_dir: &str) {
     let routes = api_defs
         .iter()
         .map(|x| x.route.as_str())
@@ -119,13 +124,15 @@ pub(super) fn setup_api_dir(api_defs: &[ApiDefinition]) {
         route_tree.add_path(&route);
     }
 
-    recurse(&route_tree, "");
+    recurse(&route_tree, "", root_dir);
 }
 
 pub(super) fn process_api_definition(
     api_def: &ApiDefinition,
     api_config: &ApiConfig,
     depends_on: &str,
+    root_dir: &str,
+    domain: &str,
 ) {
     let mut tf_vars = TfVars {
         environment_vars: Default::default(),
@@ -167,7 +174,7 @@ pub(super) fn process_api_definition(
         .replace("{depends_on}", depends_on)
         .replace("{resource_path}", &tf_vars.resource_path)
         .replace("{resource_path_hash}", &format!("{resource_hash}"))
-        .replace("{domain_name}", "api.cornchipss.com")
+        .replace("{domain_name}", domain)
         .replace(
             "{environment_variables}",
             &format!(
@@ -184,7 +191,7 @@ pub(super) fn process_api_definition(
         );
 
     fs::write(
-        &format!("terraform/generated/api/{}_{}.tf", api_prefix, tf_vars.name),
+        &format!("{root_dir}/{}_{}.tf", api_prefix, tf_vars.name),
         tf_file,
     )
     .expect("Failed to write");
@@ -193,13 +200,19 @@ pub(super) fn process_api_definition(
         &format!("{}/{}", api_def.root, api_def.file),
         &tf_vars,
         &api_prefix,
+        root_dir,
     )
     .expect("Unable to create api files!");
 }
 
-fn create_lambda_files(file_path: &str, tf_vars: &TfVars, api_prefix: &str) -> anyhow::Result<()> {
+fn create_lambda_files(
+    file_path: &str,
+    tf_vars: &TfVars,
+    api_prefix: &str,
+    root_dir: &str,
+) -> anyhow::Result<()> {
     let file_buf = File::create(&format!(
-        "terraform/generated/api/lambda_function_{}_{}.zip",
+        "{root_dir}/lambda_function_{}_{}.zip",
         api_prefix, tf_vars.name
     ))?;
 
