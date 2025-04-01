@@ -1,0 +1,134 @@
+variable "aws_region" {
+  default = "us-east-1"
+}
+
+variable "domain_name" {
+  default = "cornchipss.com"
+}
+
+provider "aws" {
+  region = var.aws_region
+}
+
+
+resource "aws_s3_bucket" "website" {
+  # bucket = "my-tf-test-bucket"
+
+  force_destroy = true
+  # bucket        = var.domain_name
+}
+
+resource "aws_s3_bucket_acl" "acl" {
+  bucket     = aws_s3_bucket.website.id
+  acl        = "public-read"
+  depends_on = [aws_s3_bucket_ownership_controls.s3_bucket_acl_ownership]
+}
+
+resource "aws_s3_bucket_versioning" "versioning" {
+  bucket = aws_s3_bucket.website.id
+  versioning_configuration {
+    status = "Enabled"
+  }
+}
+
+resource "aws_s3_bucket_public_access_block" "public_access_block" {
+  bucket                  = aws_s3_bucket.website.id
+  block_public_acls       = false
+  block_public_policy     = false
+  ignore_public_acls      = false
+  restrict_public_buckets = false
+}
+
+# Enable static website hosting
+resource "aws_s3_bucket_website_configuration" "website" {
+  bucket         = aws_s3_bucket.website.id
+  website_domain = var.domain_name
+
+  index_document {
+    suffix = "index.html"
+  }
+
+  error_document {
+    key = "404.html"
+  }
+}
+
+# Make the S3 bucket public
+resource "aws_s3_bucket_policy" "public_read" {
+  bucket = aws_s3_bucket.website.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid       = "PublicReadGetObject"
+        Effect    = "Allow"
+        Principal = "*"
+        Action    = "s3:GetObject"
+        Resource  = "arn:aws:s3:::${aws_s3_bucket.website.id}/*"
+      }
+    ]
+  })
+}
+
+# Upload website files
+resource "aws_s3_object" "website_files" {
+  for_each = fileset("website/", "**")
+
+  bucket = aws_s3_bucket.website.id
+  key    = each.value
+  source = "website/${each.value}"
+  acl    = "public-read"
+  etag   = filemd5("website/${each.value}")
+  content_type = lookup({
+    "html" = "text/html",
+    "css"  = "text/css",
+    "js"   = "application/javascript"
+  }, regex("\\.([^.]+)$", each.value)[0], "application/octet-stream")
+}
+
+# Find a certificate that is issued
+data "aws_acm_certificate" "issued" {
+  domain   = var.domain_name
+  statuses = ["ISSUED"]
+}
+
+# Security policy
+
+resource "aws_s3_bucket_ownership_controls" "s3_bucket_acl_ownership" {
+  bucket = aws_s3_bucket.website.id
+  rule {
+    object_ownership = "BucketOwnerPreferred"
+  }
+  depends_on = [aws_s3_bucket_public_access_block.example]
+}
+
+resource "aws_s3_bucket_public_access_block" "example" {
+  bucket = aws_s3_bucket.website.id
+
+  block_public_acls       = false
+  block_public_policy     = false
+  ignore_public_acls      = false
+  restrict_public_buckets = false
+}
+
+resource "aws_s3_bucket_policy" "bucket-policy" {
+  bucket = aws_s3_bucket.website.id
+  policy = data.aws_iam_policy_document.iam-policy.json
+}
+
+data "aws_iam_policy_document" "iam-policy" {
+  statement {
+    sid    = "AllowPublicRead"
+    effect = "Allow"
+    resources = [
+      "arn:aws:s3:::${aws_s3_bucket.website.id}/*",
+    ]
+    actions = ["S3:GetObject"]
+    principals {
+      type        = "*"
+      identifiers = ["*"]
+    }
+  }
+
+  depends_on = [aws_s3_bucket_public_access_block.example]
+}

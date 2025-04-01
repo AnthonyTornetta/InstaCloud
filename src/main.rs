@@ -6,13 +6,69 @@ use config::{
     cloud_config::{CloudConfig, CloudConfigRaw},
     ConfigVariable, ConfigVariables,
 };
+use stack::{
+    api::{
+        domain_name::{Certificate, Domain, EndpointConfiguration},
+        endpoint::{ApiEndpoint, HttpMethod},
+        gateway::ApiGateway,
+    },
+    iam::role::{Role, RoleAction, RoleEffect, RolePolicy, RoleService},
+    lambda::{LambdaFunction, LambdaRuntime},
+    shared,
+};
 use walkdir::WalkDir;
 
 mod api;
 mod config;
 mod database;
+pub mod stack;
 
-fn main() -> anyhow::Result<()> {
+fn main() {
+    let cert = shared(Certificate {
+        domain: "api.cornchipss.com".into(),
+    });
+
+    let dn = shared(Domain {
+        endpoint_configuration: EndpointConfiguration::Regional,
+        certificate: cert.clone(),
+    });
+
+    let role = shared(Role {
+        name: "LambdaRole".into(),
+        policies: vec![RolePolicy {
+            action: RoleAction::AssumeRole,
+            effect: RoleEffect::Allow,
+            service: RoleService::Lambda,
+        }],
+    });
+
+    let endpoint = ApiEndpoint {
+        lambda: LambdaFunction {
+            role,
+            file_path: "temp.js".into(),
+            runtime: LambdaRuntime::NodeJs20,
+            environment_variables: Default::default(),
+        },
+        http_method: HttpMethod::Get,
+    };
+
+    let gateway = ApiGateway {
+        name: "API Gateway".into(),
+        stage_name: "prod".into(),
+        domain: Some(dn.clone()),
+        endpoints: vec![endpoint],
+    };
+
+    let cert_tf = cert.borrow().create_terraform();
+    let dn_tf = dn.borrow().create_terraform();
+    let gw_tf = gateway.create_terraform();
+
+    let tf = cert_tf.combine(&dn_tf).combine(&gw_tf);
+
+    println!("{tf}");
+}
+
+fn main2() -> anyhow::Result<()> {
     let base_path = "samples/testing";
 
     let cloud_toml = fs::read_to_string(format!("{base_path}/cloud.toml"))?;
