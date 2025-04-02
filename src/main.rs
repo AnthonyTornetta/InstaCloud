@@ -58,8 +58,23 @@ fn main() {
         route: "test".into(),
     };
 
+    let endpoint2 = ApiEndpoint {
+        lambda: LambdaFunction {
+            role: role.clone(),
+            file_path: "samples/testing/api-endpoints/based/other/get-other.js".into(),
+            runtime: LambdaRuntime::NodeJs20,
+            environment_variables: Default::default(),
+        },
+        http_method: HttpMethod::Get,
+        route: "test2".into(),
+    };
+
     // This should be done in endpoint!
     endpoint
+        .zip_file("terraform/generated/test/")
+        .expect("Failed to zip file!");
+
+    endpoint2
         .zip_file("terraform/generated/test/")
         .expect("Failed to zip file!");
 
@@ -67,7 +82,7 @@ fn main() {
         name: "API Gateway".into(),
         stage_name: "prod".into(),
         domain: Some(dn.clone()),
-        endpoints: vec![endpoint],
+        endpoints: vec![endpoint, endpoint2],
     };
 
     let provider_tf = provider.create_terraform();
