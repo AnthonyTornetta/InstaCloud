@@ -5,12 +5,13 @@ use crate::stack::{
     Shared,
 };
 
-#[derive(Default)]
+#[derive(Default, Clone, Debug)]
 pub enum EndpointConfiguration {
     #[default]
     Regional,
 }
 
+#[derive(Debug, Clone)]
 pub struct Certificate {
     pub domain: String,
 }
@@ -47,6 +48,7 @@ impl Certificate {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct Domain {
     pub endpoint_configuration: EndpointConfiguration,
     pub certificate: Shared<Certificate>,

@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use derive_more::Display;
 
-#[derive(Debug, Clone, Display)]
+#[derive(Debug, Clone, Display, Default)]
 pub struct Terraform(pub String);
 
 impl Terraform {
@@ -25,8 +25,26 @@ pub enum TfVar {
     },
 }
 
+impl TfVar {
+    pub fn to_tf_string(&self) -> String {
+        match self {
+            Self::Resource {
+                resource_name,
+                resource_identifier,
+                field,
+            } => format!("{resource_name}.{resource_identifier}.{field}",),
+            Self::Data {
+                data_name,
+                data_identifier,
+                field,
+            } => format!("data.{data_name}.{data_identifier}.{field}",),
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub enum TfField {
+    Raw(String),
     Variable(TfVar),
     String(String),
     List(Vec<TfField>),
@@ -36,7 +54,7 @@ pub enum TfField {
 impl TfField {
     pub fn eq_prefix(&self) -> String {
         match self {
-            Self::Variable(_) | Self::String(_) | Self::List(_) => "= ",
+            Self::Variable(_) | Self::String(_) | Self::List(_) | Self::Raw(_) => "= ",
             Self::Map(_) => "",
         }
         .into()
@@ -44,23 +62,9 @@ impl TfField {
 
     pub fn to_tf_string(&self) -> String {
         match self {
+            Self::Raw(s) => s.clone(),
             Self::String(s) => format!("\"{}\"", s),
-            Self::Variable(v) => match v {
-                TfVar::Resource {
-                    resource_name,
-                    resource_identifier,
-                    field,
-                } => {
-                    format!("{resource_name}.{resource_identifier}.{field}",)
-                }
-                TfVar::Data {
-                    data_name,
-                    data_identifier,
-                    field,
-                } => {
-                    format!("data.{data_name}.{data_identifier}.{field}",)
-                }
-            },
+            Self::Variable(v) => v.to_tf_string(),
             Self::List(l) => {
                 let list = l
                     .iter()
@@ -84,6 +88,21 @@ impl TfField {
         }
     }
 }
+
+#[derive(Clone, Copy, Debug)]
+pub enum TfDataType {
+    Resource,
+    Data,
+}
+
+pub trait TerraformEntity {
+    fn var(&self, field: impl Into<String>) -> TfVar;
+    fn tf_identifier(&self) -> String;
+    fn tf_type() -> &'static str;
+    fn data_type() -> TfDataType;
+}
+
+pub struct TfOutput {}
 
 #[derive(Debug, Clone)]
 pub struct TfResource {
@@ -120,6 +139,25 @@ impl TfResource {
 
     pub fn add_field(&mut self, field_name: &str, field_value: TfField) -> &mut Self {
         self.fields.insert(field_name.to_string(), field_value);
+
+        self
+    }
+
+    pub fn depends_on<T: TerraformEntity>(&mut self, depends_on: &T) -> &mut Self {
+        let var = match T::data_type() {
+            TfDataType::Resource => format!("{}.{}", T::tf_type(), depends_on.tf_identifier()),
+            TfDataType::Data => format!("data.{}.{}", T::tf_type(), depends_on.tf_identifier()),
+        };
+
+        if let Some(depends_on) = self.fields.get_mut("depends_on") {
+            if let TfField::List(ref mut list) = depends_on {
+                list.push(TfField::Raw(var));
+            } else {
+                panic!("Invalid state for depends_on. Expected a list, got: {depends_on:?}");
+            }
+        } else {
+            self.add_field("depends_on", TfField::List(vec![TfField::Raw(var)]));
+        }
 
         self
     }

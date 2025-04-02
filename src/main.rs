@@ -14,6 +14,7 @@ use stack::{
     },
     iam::role::{Role, RoleAction, RoleEffect, RolePolicy, RoleService},
     lambda::{LambdaFunction, LambdaRuntime},
+    region::{Provider, Region},
     shared,
 };
 use walkdir::WalkDir;
@@ -24,6 +25,10 @@ mod database;
 pub mod stack;
 
 fn main() {
+    let provider = Provider {
+        region: Region::UsEast1,
+    };
+
     let cert = shared(Certificate {
         domain: "api.cornchipss.com".into(),
     });
@@ -44,12 +49,13 @@ fn main() {
 
     let endpoint = ApiEndpoint {
         lambda: LambdaFunction {
-            role,
+            role: role.clone(),
             file_path: "temp.js".into(),
             runtime: LambdaRuntime::NodeJs20,
             environment_variables: Default::default(),
         },
         http_method: HttpMethod::Get,
+        route: "test".into(),
     };
 
     let gateway = ApiGateway {
@@ -59,11 +65,15 @@ fn main() {
         endpoints: vec![endpoint],
     };
 
+    let provider_tf = provider.create_terraform();
+    let role_tf = role.borrow().create_terraform();
     let cert_tf = cert.borrow().create_terraform();
     let dn_tf = dn.borrow().create_terraform();
     let gw_tf = gateway.create_terraform();
 
-    let tf = cert_tf.combine(&dn_tf).combine(&gw_tf);
+    let tf = provider_tf.combine(&role_tf.combine(&cert_tf.combine(&dn_tf).combine(&gw_tf)));
+
+    fs::write("terraform/generated/test/main.tf", tf.to_string()).expect("Unable to write file!");
 
     println!("{tf}");
 }
