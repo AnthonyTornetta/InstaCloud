@@ -4,11 +4,13 @@ use std::{
 };
 
 use crate::stack::{
-    tf::{Terraform, TfField, TfResource, TfVar},
+    tf::{Terraform, TerraformEntity, TfField, TfResource, TfVar},
     Shared,
 };
 
-use super::{domain_name::Domain, endpoint::ApiEndpoint};
+use super::{
+    deployment::GatewayDeployment, domain_name::Domain, endpoint::ApiEndpoint, stage::Stage,
+};
 
 #[derive(Default, Debug, Clone)]
 pub struct ApiGateway {
@@ -186,6 +188,10 @@ impl ApiGateway {
         );
         gateway_resource.add_field("name", TfField::String(self.name.clone()));
 
+        let stage = Stage {
+            stage_name: self.stage_name.clone(),
+        };
+
         let Some(domain) = self.domain.as_ref() else {
             todo!();
         };
@@ -199,7 +205,7 @@ impl ApiGateway {
                 TfField::Variable(domain.borrow().var("domain_name")),
             )
             .add_field("api_id", TfField::Variable(self.var_gateway_rest_api("id")))
-            .add_field("stage_name", TfField::String(self.stage_name.clone()));
+            .add_field("stage_name", stage.var("stage_name").into());
 
         let gateway_tf = gateway_resource
             .create_terraform()
@@ -225,6 +231,9 @@ impl ApiGateway {
             .reduce(|a, b| a.combine(&b))
             .unwrap_or(Terraform::default());
 
+        let deployment = GatewayDeployment { gateway: self };
+        let deployment_tf = deployment.create_terraform();
+
         let endpoints_tf = self
             .endpoints
             .iter()
@@ -238,6 +247,12 @@ impl ApiGateway {
             .reduce(|a, b| a.combine(&b))
             .unwrap_or(Terraform::default());
 
-        gateway_tf.combine(&resource_tf).combine(&endpoints_tf)
+        let stage_tf = stage.create_terraform(self, &deployment);
+
+        gateway_tf
+            .combine(&stage_tf)
+            .combine(&resource_tf)
+            .combine(&endpoints_tf)
+            .combine(&deployment_tf)
     }
 }

@@ -50,13 +50,18 @@ fn main() {
     let endpoint = ApiEndpoint {
         lambda: LambdaFunction {
             role: role.clone(),
-            file_path: "temp.js".into(),
+            file_path: "samples/testing/api-endpoints/based/posts/get-posts.js".into(),
             runtime: LambdaRuntime::NodeJs20,
             environment_variables: Default::default(),
         },
         http_method: HttpMethod::Get,
         route: "test".into(),
     };
+
+    // This should be done in endpoint!
+    endpoint
+        .zip_file("terraform/generated/test/")
+        .expect("Failed to zip file!");
 
     let gateway = ApiGateway {
         name: "API Gateway".into(),

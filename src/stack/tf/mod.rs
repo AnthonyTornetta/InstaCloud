@@ -42,6 +42,18 @@ impl TfVar {
     }
 }
 
+impl From<String> for TfField {
+    fn from(value: String) -> Self {
+        Self::String(value)
+    }
+}
+
+impl From<TfVar> for TfField {
+    fn from(value: TfVar) -> Self {
+        Self::Variable(value)
+    }
+}
+
 #[derive(Debug, Clone)]
 pub enum TfField {
     Raw(String),
@@ -49,15 +61,24 @@ pub enum TfField {
     String(String),
     List(Vec<TfField>),
     Map(HashMap<String, TfField>),
+    Object(HashMap<String, TfField>),
 }
 
 impl TfField {
     pub fn eq_prefix(&self) -> String {
         match self {
-            Self::Variable(_) | Self::String(_) | Self::List(_) | Self::Raw(_) => "= ",
+            Self::Variable(_)
+            | Self::String(_)
+            | Self::List(_)
+            | Self::Raw(_)
+            | Self::Object(_) => "= ",
             Self::Map(_) => "",
         }
         .into()
+    }
+
+    pub fn map(items: Vec<(String, TfField)>) -> Self {
+        Self::Map(items.into_iter().collect())
     }
 
     pub fn to_tf_string(&self) -> String {
@@ -74,7 +95,7 @@ impl TfField {
 
                 format!("[{list}]")
             }
-            Self::Map(m) => {
+            Self::Map(m) | Self::Object(m) => {
                 let map = m
                     .iter()
                     .map(|(key, field)| {
@@ -96,7 +117,20 @@ pub enum TfDataType {
 }
 
 pub trait TerraformEntity {
-    fn var(&self, field: impl Into<String>) -> TfVar;
+    fn var(&self, field: impl Into<String>) -> TfVar {
+        match Self::data_type() {
+            TfDataType::Resource => TfVar::Resource {
+                resource_name: Self::tf_type().into(),
+                resource_identifier: self.tf_identifier(),
+                field: field.into(),
+            },
+            TfDataType::Data => TfVar::Data {
+                data_name: Self::tf_type().into(),
+                data_identifier: self.tf_identifier(),
+                field: field.into(),
+            },
+        }
+    }
     fn tf_identifier(&self) -> String;
     fn tf_type() -> &'static str;
     fn data_type() -> TfDataType;

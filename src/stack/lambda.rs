@@ -1,7 +1,11 @@
 use std::{
     collections::HashMap,
+    fs::{self, File},
     hash::{DefaultHasher, Hash, Hasher},
+    io::Write,
 };
+
+use zip::{write::SimpleFileOptions, ZipWriter};
 
 use super::{
     iam::role::Role,
@@ -53,6 +57,22 @@ impl LambdaFunction {
 
     pub fn zip_path(&self) -> String {
         format!("lambda_function_{}.zip", self.unique_key())
+    }
+
+    pub fn zip_file(&self, path: &str) -> std::io::Result<()> {
+        let file_buf = File::create(&format!("{path}/{}", self.zip_path()))?;
+
+        let mut zw = ZipWriter::new(file_buf);
+        zw.start_file("index.js", SimpleFileOptions::default())?;
+
+        let fs_conents = fs::read(&self.file_path)
+            .unwrap_or_else(|_| panic!("Unable to read file {} - is it there?", self.file_path));
+
+        zw.write_all(&fs_conents)?;
+
+        zw.finish()?;
+
+        Ok(())
     }
 
     pub fn create_terraform(&self) -> Terraform {
