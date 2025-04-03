@@ -1,4 +1,4 @@
-use super::endpoint::HttpMethod;
+use crate::cloud::api::HttpMethod;
 
 pub struct ApiDefinition {
     pub name: String,

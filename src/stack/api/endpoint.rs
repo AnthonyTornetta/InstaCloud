@@ -1,17 +1,12 @@
-use crate::stack::{
-    lambda::LambdaFunction,
-    tf::{Terraform, TerraformEntity, TfField, TfResource},
+use crate::{
+    cloud::api::HttpMethod,
+    stack::{
+        lambda::LambdaFunction,
+        tf::{Terraform, TerraformEntity, TfField, TfResource},
+    },
 };
 
 use super::gateway::{ApiGateway, ResourcePath};
-
-#[derive(Clone, Hash, PartialEq, Eq, Debug)]
-pub enum HttpMethod {
-    Get,
-    Post,
-    Put,
-    Delete,
-}
 
 #[derive(Clone, Debug)]
 pub struct ApiEndpoint {
@@ -55,13 +50,7 @@ impl<'a> ApiGatewayIntegration<'a> {
         gateway: &ApiGateway,
         resource_path: &ResourcePath,
     ) -> Terraform {
-        let http_method = match self.http_method {
-            HttpMethod::Get => "GET",
-            HttpMethod::Post => "POST",
-            HttpMethod::Put => "PUT",
-            HttpMethod::Delete => "DELETE",
-        }
-        .to_owned();
+        let http_method = self.http_method.into();
 
         let mut tf_gateway_integration =
             TfResource::new_resource("aws_api_gateway_integration", self.tf_identifier());
@@ -109,13 +98,7 @@ impl ApiEndpoint {
     ) -> Terraform {
         let lambda_tf = self.lambda.create_terraform();
 
-        let http_method = match self.http_method {
-            HttpMethod::Get => "GET",
-            HttpMethod::Post => "POST",
-            HttpMethod::Put => "PUT",
-            HttpMethod::Delete => "DELETE",
-        }
-        .to_owned();
+        let http_method: String = self.http_method.into();
 
         let mut tf_gateway_method = TfResource::new_resource(Self::tf_type(), self.tf_identifier());
         tf_gateway_method

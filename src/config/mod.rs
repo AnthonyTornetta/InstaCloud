@@ -5,21 +5,32 @@ use thiserror::Error;
 
 pub mod api;
 pub mod cloud_config;
+mod loading;
 
 pub trait ContainsVariables {
-    fn insert_value(&mut self, var_name: &ConfigVariable, new_value: &str);
+    fn replace_variables(&mut self, vars: &ConfigVariables);
 }
 
 impl ContainsVariables for String {
-    fn insert_value(&mut self, var_name: &ConfigVariable, new_value: &str) {
-        *self = self.replace(&var_name.0, new_value);
+    fn replace_variables(&mut self, vars: &ConfigVariables) {
+        for (k, v) in vars.0.iter() {
+            *self = self.replace(&k.0, v);
+        }
+    }
+}
+
+impl<T: ContainsVariables + Sized> ContainsVariables for Vec<T> {
+    fn replace_variables(&mut self, vars: &ConfigVariables) {
+        for item in self {
+            item.replace_variables(vars);
+        }
     }
 }
 
 impl<T: ContainsVariables + Sized> ContainsVariables for Option<T> {
-    fn insert_value(&mut self, var_name: &ConfigVariable, new_value: &str) {
+    fn replace_variables(&mut self, vars: &ConfigVariables) {
         if let Some(s) = self {
-            s.insert_value(var_name, new_value);
+            s.replace_variables(vars);
         }
     }
 }
